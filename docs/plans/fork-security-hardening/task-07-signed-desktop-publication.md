@@ -1,13 +1,16 @@
 ---
 id: "07-signed-desktop-publication"
 title: "Gate trusted fork desktop publication on signing"
-status: implemented
+status: in-progress
 wave: 1
 depends_on: []
 plan: "plan.md"
 requirements:
   - REQ-RELEASE-DESKTOP-TRUST-001
+  - REQ-RELEASE-NATIVE-DEPENDENCY-001
 acceptance_criteria:
+  - AC-RELEASE-NATIVE-DEPENDENCY-001.1
+  - AC-RELEASE-NATIVE-DEPENDENCY-001.2
   - AC-RELEASE-DESKTOP-TRUST-001.1
   - AC-RELEASE-DESKTOP-TRUST-001.2
   - AC-RELEASE-DESKTOP-TRUST-001.3
@@ -87,5 +90,11 @@ Real signed-artifact acceptance is blocked until the owner supplies protected Ap
 - Applicable scoped `AGENTS.md` and existing tests beside the affected code.
 
 ## Results
+
+The hosted dependency audit found five vulnerabilities. Two certificate-library
+patches are locked. Three ZIP extraction advisories remain unresolved because
+the updater requires ZIP 4 and the fixes require ZIP 9. Cargo Audit now gates
+Stable preparation before tag/version mutations. No ignore was added. A reviewed
+updater/extraction migration and native archive tests remain required work.
 
 Implemented signing prerequisites before Stable prepare/publication, macOS verification, mandatory updater signatures and fork endpoint checks. Five credential-free policy tests pass. The inherited updater public key is a rejected placeholder; fork keys, OS certificates, real artifact verification and publication require owner setup. No release was dispatched.

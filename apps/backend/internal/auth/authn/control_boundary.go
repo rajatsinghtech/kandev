@@ -33,22 +33,37 @@ func ControlPlaneBoundary(multiTenancy bool) gin.HandlerFunc {
 			settings = false
 		}
 		install := installationPath(p, c.Request.Method)
-		if !settings && !install {
+		credentials := credentialSessionPath(p)
+		if !settings && !install && !credentials {
 			return
 		}
 		id, ok := FromGin(c)
-		if !ok || (settings && id.Synthetic) {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
+		if ok && !multiTenancy && id.Synthetic && bootstrapAdministrationPath(p, c.Request.Method) {
 			return
 		}
-		if settings && !HumanAdministrationSession(id) {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "human administration session required"})
-			return
-		}
-		if multiTenancy && (id.Synthetic || !id.Instance) || !multiTenancy && !id.IsAdmin() && id.Role != "owner" && !id.Instance {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "installation authority required"})
+		if status, reason := controlPlaneDenial(id, p, multiTenancy, settings, install, credentials); status != 0 {
+			c.AbortWithStatusJSON(status, gin.H{"error": reason})
 		}
 	}
+}
+
+func controlPlaneDenial(id Identity, p string, multi, settings, install, credentials bool) (int, string) {
+	if id.UserID == "" || id.Synthetic {
+		return http.StatusUnauthorized, "authentication required"
+	}
+	if credentials && id.SessionID == "" {
+		return http.StatusForbidden, "browser session required"
+	}
+	if !settings && !install {
+		return 0, ""
+	}
+	if !HumanAdministrationSession(id) {
+		return http.StatusForbidden, "human administration session required"
+	}
+	if multi && !accountAdministrationPath(p) && !id.Instance {
+		return http.StatusForbidden, "installation authority required"
+	}
+	return 0, ""
 }
 
 func pathUnder(p, prefix string) bool {
@@ -61,6 +76,9 @@ func unsafeContentPath(p string) bool {
 }
 
 func protectedSettingsPath(p string) bool {
+	if accountAdministrationPath(p) {
+		return true
+	}
 	for _, prefix := range []string{"agents", "agent-profiles", "agent-models", "agent-command-preview", "agent-install", "agent-update", "executors", "executor-profiles", "editors", "prompts"} {
 		if pathUnder(p, "/api/v1/"+prefix) {
 			return true
@@ -74,6 +92,21 @@ func protectedSettingsPath(p string) bool {
 		}
 	}
 	return false
+}
+
+func accountAdministrationPath(p string) bool {
+	return pathUnder(p, "/api/v1/users") || (pathUnder(p, "/api/v1/auth/invites") &&
+		p != "/api/v1/auth/invites/preview" && p != "/api/v1/auth/invites/accept")
+}
+
+func credentialSessionPath(p string) bool {
+	return pathUnder(p, "/api/v1/auth/password") || pathUnder(p, "/api/v1/auth/tokens") ||
+		pathUnder(p, "/api/v1/auth/sessions")
+}
+
+func bootstrapAdministrationPath(p, method string) bool {
+	return method == http.MethodPatch && (p == "/api/v1/runtime-flags/auth" || p == "/api/v1/runtime-flags/features.auth") ||
+		method == http.MethodPost && p == "/api/v1/system/restart"
 }
 
 func installationPath(p, method string) bool {

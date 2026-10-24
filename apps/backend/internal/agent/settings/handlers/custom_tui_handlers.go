@@ -8,6 +8,7 @@ import (
 
 	"github.com/kandev/kandev/internal/agent/mcpconfig"
 	"github.com/kandev/kandev/internal/agent/settings/controller"
+	"github.com/kandev/kandev/internal/agent/settings/dto"
 	ws "github.com/kandev/kandev/pkg/websocket"
 )
 
@@ -81,14 +82,14 @@ func (h *Handlers) httpCreateCustomTUIAgent(c *gin.Context) {
 			h.logger.Error("failed to list available agents", zap.Error(availErr))
 		} else {
 			notification, _ := ws.NewNotification(ws.ActionAgentAvailableUpdated, gin.H{
-				"agents": availableResp.Agents,
+				"agents": dto.RedactedAvailableCatalog(availableResp.Agents),
 			})
 			h.hub.Broadcast(notification)
 		}
 		// Broadcast profile created so the create-task dialog picks up the new profile
 		if len(resp.Profiles) > 0 {
 			notification, _ := ws.NewNotification(ws.ActionAgentProfileCreated, gin.H{
-				"profile": resp.Profiles[0],
+				"profile": dto.RedactedProfileCatalog(resp.Profiles[0]),
 			})
 			h.hub.Broadcast(notification)
 		}
@@ -149,7 +150,7 @@ func (h *Handlers) httpUpdateCustomTUIAgentMCP(c *gin.Context) {
 	// this change. Matches the sibling agent.profile.* and agent.available.updated
 	// broadcasts in this package.
 	if h.hub != nil {
-		notification, _ := ws.NewNotification(ws.ActionAgentSettingsUpdated, gin.H{"agent": resp})
+		notification, _ := ws.NewNotification(ws.ActionAgentSettingsUpdated, gin.H{"agent": dto.RedactedAgentCatalog(*resp)})
 		h.hub.Broadcast(notification)
 	}
 

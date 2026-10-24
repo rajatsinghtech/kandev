@@ -1,6 +1,6 @@
 ---
 created: 2026-10-24
-status: implemented
+status: in-progress
 requirements:
   - REQ-PLATFORM-LOCAL-LISTENER-001
   - REQ-AUTH-ADMIN-CONTAINMENT-001
@@ -9,6 +9,7 @@ requirements:
   - REQ-AUTH-OPERATOR-CONTROL-002
   - REQ-EXECUTORS-CREDENTIAL-TRUST-001
   - REQ-RELEASE-DESKTOP-TRUST-001
+  - REQ-RELEASE-NATIVE-DEPENDENCY-001
 system_design:
   - ../../specs/platform/system-design/local-listener-default.md
   - ../../specs/auth/system-design/administration-containment.md
@@ -59,7 +60,7 @@ are deliberately published. Existing privileged native extensions remain trusted
 - [x] [Task 04: Deny unsafe active-content transports](task-04-untrusted-content-origin.md)
 - [x] [Task 05: Human configuration principals](task-05-operator-settings-principals.md)
 - [x] [Task 06: Refuse unsupported Organizations execution](task-06-credential-execution-boundary.md)
-- [x] [Task 07: Signed publication admission](task-07-signed-desktop-publication.md)
+- [ ] [Task 07: Signed publication admission and unresolved archive advisories](task-07-signed-desktop-publication.md)
 
 ## Validation
 
@@ -82,6 +83,25 @@ or concealed by this change. Real signed installers, browser preview isolation,
 live PostgreSQL, and Docker/OS canary tests were not run.
 
 ## Restoration and external prerequisites
+
+Hosted Cargo Audit found five native dependency vulnerabilities. The two
+certificate-library patch releases are locked; three ZIP extraction advisories
+remain because the pinned updater requires ZIP 4 and the fixes require ZIP 9.
+Stable preparation now runs Cargo Audit before release side effects. These
+findings are unresolved, not suppressed. A reviewed updater/extraction change
+and adversarial archive tests are required before trusted publication.
+
+The follow-up also redacts profile and available-agent WebSocket notifications,
+protects account/password routes against PAT-to-browser authority escalation,
+and requires human administration for backup access. Legacy MCP mutation tests
+now assert denial; direct-domain concurrency tests retain their coverage.
+
+The complete upstream E2E suite is not green: its login-free fixture setup reads
+protected executor configuration and receives the intended 401. Those fixtures
+need a human-session setup path and new denial/onboarding scenarios before this
+fork can claim browser compatibility. This is outstanding work, not a passing
+skip. The PR remains a draft. Do not merge or deploy on the strength of the
+focused regression workflow alone.
 
 Restoring active previews requires a separate site, task capabilities and browser
 adversarial tests. Restoring Organizations requires real execution isolation,

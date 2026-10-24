@@ -22,6 +22,11 @@ an agent JWT, or a PAT does not grant that UI authority. MCP retains redacted
 agent selection metadata but cannot change launcher, executor, or shared prompt
 configuration through the configuration tunnel.
 
+Account/invitation administration, backup access and installation changes also
+require a human administrator session. Password, token and session management
+require a browser session. With login disabled, enabling authentication and
+restarting remain available so local setup can be completed.
+
 Active port previews, embedded VS Code, and generated canvas runtimes return
 `503 isolated_origin_required`. They are unavailable until a separate content
 site is implemented. HTML, XHTML, SVG, and XML served by API file routes are
@@ -38,6 +43,12 @@ Stable desktop publication requires complete Windows signing, Apple notarization
 and Tauri updater inputs, plus a fork-owned updater public key and endpoint.
 Missing prerequisites stop publication; unsigned development validation artifacts
 remain available. No signed fork binaries have been published by this change.
+
+The native audit also blocks release on three unresolved ZIP-extraction advisories
+in the pinned Tauri updater dependency. The two certificate-library advisories
+found in the same audit have compatible patch upgrades in this branch. Do not
+treat the fork as having a clean dependency audit until the updater archive
+dependency has been replaced or patched and verified.
 
 ## Quick checklist
 

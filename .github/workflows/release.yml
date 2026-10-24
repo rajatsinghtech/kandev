@@ -139,6 +139,12 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: python3 scripts/release/trusted-desktop-policy.py --repository "${{ github.repository }}"
 
+      - name: Audit desktop dependencies before Stable publication
+        if: ${{ !inputs.dry_run && !inputs.desktop_validation_only }}
+        run: |
+          cargo install cargo-audit --version 0.22.2 --locked
+          cargo audit --file apps/desktop/src-tauri/Cargo.lock
+
       - name: Require main for normal release
         if: ${{ !inputs.dry_run && !inputs.desktop_validation_only && inputs.backfill_tag == '' }}
         env:

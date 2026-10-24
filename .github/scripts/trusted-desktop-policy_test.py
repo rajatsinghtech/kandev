@@ -47,6 +47,7 @@ class TrustedDesktopPolicyTests(unittest.TestCase):
         self.assertGreaterEqual(workflow.count('python3 scripts/release/trusted-desktop-policy.py'), 2)
         self.assertIn('Verify macOS publisher identity and notarization', workflow)
         self.assertIn('xcrun stapler validate', workflow)
+        self.assertIn('cargo audit --file apps/desktop/src-tauri/Cargo.lock', workflow)
         self.assertNotIn('--allow-unsigned', workflow)
 
 

@@ -61,7 +61,8 @@ func TestExecutorProfileScriptsSettingsDomain(t *testing.T) {
 	require.NoError(t, err)
 	h := mcphandlers.NewHandlers(svc, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, log)
 	h.SetSettingsCatalog(catalog)
-	h.SetSettingsOperations(newSettingsOperations(catalog, nil, nil, settingsDomainDependencies{task: svc}))
+	operations := newSettingsOperations(catalog, nil, nil, settingsDomainDependencies{task: svc})
+	h.SetSettingsOperations(operations)
 	d := ws.NewDispatcher()
 	h.RegisterHandlers(d)
 	prepare, cleanup := "new-prepare", "new-cleanup"
@@ -71,6 +72,9 @@ func TestExecutorProfileScriptsSettingsDomain(t *testing.T) {
 	}
 	ctx := authn.WithIdentity(t.Context(), authn.Identity{Synthetic: true})
 	response := callProfileScriptSettings(t, d, ctx, "settings-profile", map[string]any{"name": "Edited"})
+	require.Equal(t, ws.MessageTypeError, response.Type, "MCP must not acquire launcher configuration authority")
+	require.NotNil(t, gate.afterRead, "denied MCP call must not read or modify the profile")
+	response = callProfileScriptDomain(t, operations, ctx, "settings-profile", map[string]any{"name": "Edited"})
 	require.Equal(t, ws.MessageTypeResponse, response.Type, string(response.Payload))
 	var result struct {
 		Settings models.ExecutorProfile `json:"settings"`
@@ -82,14 +86,30 @@ func TestExecutorProfileScriptsSettingsDomain(t *testing.T) {
 	require.Equal(t, cleanup, result.Settings.CleanupScript)
 	require.Equal(t, prepare, stored.PrepareScript)
 	require.Equal(t, cleanup, stored.CleanupScript)
-	response = callProfileScriptSettings(t, d, ctx, "settings-profile", map[string]any{"prepare_script": "", "cleanup_script": ""})
+	response = callProfileScriptDomain(t, operations, ctx, "settings-profile", map[string]any{"prepare_script": "", "cleanup_script": ""})
 	require.Equal(t, ws.MessageTypeResponse, response.Type, string(response.Payload))
 	stored, err = repo.GetExecutorProfile(ctx, "settings-profile")
 	require.NoError(t, err)
 	require.Empty(t, stored.PrepareScript)
 	require.Empty(t, stored.CleanupScript)
-	response = callProfileScriptSettings(t, d, ctx, "missing-profile", map[string]any{"name": "Rejected"})
+	response = callProfileScriptDomain(t, operations, ctx, "missing-profile", map[string]any{"name": "Rejected"})
 	require.Equal(t, ws.MessageTypeError, response.Type)
+}
+
+func callProfileScriptDomain(t *testing.T, operations mcphandlers.SettingsOperations, ctx context.Context, id string, changes map[string]any) *ws.Message {
+	t.Helper()
+	raw, err := json.Marshal(changes)
+	require.NoError(t, err)
+	var fields map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(raw, &fields))
+	value, err := operations.UpdateSettings(ctx, settingscatalog.ResourceTarget{ResourceType: "executor_profile", ResourceID: &id}, fields, nil)
+	if err != nil {
+		response, _ := ws.NewError("domain", "settings", ws.ErrorCodeUnknownAction, err.Error(), nil)
+		return response
+	}
+	response, err := ws.NewResponse("domain", "settings", value)
+	require.NoError(t, err)
+	return response
 }
 
 func callProfileScriptSettings(t *testing.T, d *ws.Dispatcher, ctx context.Context, id string, changes map[string]any) *ws.Message {

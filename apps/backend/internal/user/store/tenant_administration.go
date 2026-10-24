@@ -51,15 +51,8 @@ func (r *sqliteRepository) UpdateUserRoleStatusInOrg(ctx context.Context, id, or
 	if status != models.StatusDisabled {
 		status = models.StatusActive
 	}
-	if user.Role == models.RoleAdmin && user.Status == models.StatusActive && (role != models.RoleAdmin || status != models.StatusActive) {
-		var count int
-		err := tx.GetContext(ctx, &count, tx.Rebind("SELECT COUNT(*) FROM users WHERE org_id = ? AND role = ? AND status = ? AND id <> ?"), orgID, models.RoleAdmin, models.StatusActive, id)
-		if err != nil {
-			return nil, err
-		}
-		if count == 0 {
-			return nil, ErrLastOrgAdmin
-		}
+	if err := requireOtherOrgAdmin(ctx, tx, user, role, status); err != nil {
+		return nil, err
 	}
 	user.Role, user.Status, user.UpdatedAt = role, status, time.Now().UTC()
 	if _, err := tx.ExecContext(ctx, tx.Rebind("UPDATE users SET role = ?, status = ?, updated_at = ? WHERE id = ? AND org_id = ?"), role, status, user.UpdatedAt, id, orgID); err != nil {
@@ -71,12 +64,27 @@ func (r *sqliteRepository) UpdateUserRoleStatusInOrg(ctx context.Context, id, or
 	return user, nil
 }
 
+func requireOtherOrgAdmin(ctx context.Context, tx *sqlx.Tx, user *models.User, role, status string) error {
+	if user.Role != models.RoleAdmin || user.Status != models.StatusActive || (role == models.RoleAdmin && status == models.StatusActive) {
+		return nil
+	}
+	var count int
+	err := tx.GetContext(ctx, &count, tx.Rebind("SELECT COUNT(*) FROM users WHERE org_id = ? AND role = ? AND status = ? AND id <> ?"), user.OrgID, models.RoleAdmin, models.StatusActive, user.ID)
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return ErrLastOrgAdmin
+	}
+	return nil
+}
+
 func (r *sqliteRepository) lockOrgAccounts(ctx context.Context, tx *sqlx.Tx, orgID string) error {
 	if dialect.IsPostgres(r.db.DriverName()) {
 		var ids []string
 		return tx.SelectContext(ctx, &ids, tx.Rebind("SELECT id FROM users WHERE org_id = ? ORDER BY id FOR UPDATE"), orgID)
 	}
 	// Acquire SQLite's writer before reading the administrator set.
-	_, err := tx.ExecContext(ctx, "UPDATE users SET updated_at = updated_at WHERE org_id = ?", orgID)
+	_, err := tx.ExecContext(ctx, tx.Rebind("UPDATE users SET updated_at = updated_at WHERE org_id = ?"), orgID)
 	return err
 }

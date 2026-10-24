@@ -32,8 +32,10 @@ jobs:
         working-directory: apps/backend
         run: |
           go test ./internal/agent/settings/dto ./internal/agent/settings/controller ./internal/agent/settings/handlers -run 'TestAgentCatalog|TestListAgents|TestGetAgent|TestRegisterRoutesRejectsMutationWithoutInterimSettingsInterlock' -count=1
-          go test ./internal/mcp/handlers -run TestMCPDoesNotGrantLaunchConfigurationAuthority -count=1
-          go test ./internal/backendapp -run TestStartupRejectsPersistedUnisolatedTenancy -count=1
+          go test ./internal/mcp/handlers -run 'TestMCPDoesNotGrantLaunchConfigurationAuthority|TestSharedPromptWrite|TestSharedPromptConcurrent|TestRegisterHandlers_ListExecutorsActionDispatches' -count=1
+          go test ./internal/mcp/server -run TestProfileEnabledIntentMCP -count=1
+          go test ./internal/backendapp -run 'TestStartupRejectsPersistedUnisolatedTenancy|TestProfileEnabledIntentCompact|TestRepositoryCheckoutDefaultsGuardedMCP|TestExecutorProfileScriptsSettingsDomain' -count=1
+          go run ./cmd/sqlguard ./internal
       - name: Desktop publication policy
         run: |
           python3 .github/scripts/trusted-desktop-policy_test.py

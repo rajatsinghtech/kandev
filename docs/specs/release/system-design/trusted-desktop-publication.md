@@ -3,6 +3,7 @@ status: draft
 system: release
 requirements:
   - REQ-RELEASE-DESKTOP-TRUST-001
+  - REQ-RELEASE-NATIVE-DEPENDENCY-001
 ---
 
 # Trusted desktop publication system design
@@ -16,6 +17,7 @@ Release owns artifact publication and publisher identity. This fork will separat
 | Requirement | Design sections |
 | --- | --- |
 | `REQ-RELEASE-DESKTOP-TRUST-001` | Components, control flow, and verification below |
+| `REQ-RELEASE-NATIVE-DEPENDENCY-001` | Native dependency admission below |
 
 ## Restricted delivery
 
@@ -42,6 +44,20 @@ reasons without tokens, request bodies, private paths, or sensitive configuratio
 Pending verification is not a successful implementation result.
 
 ## Related contracts and decisions
+
+### Native dependency admission
+
+Cargo Audit on the first PR commit found five vulnerabilities. Lock
+`rustls-webpki` 0.103.16 and `webpki-root-certs` 1.0.10 with checksums from the
+official sparse registry; both patch releases preserve their dependency edges.
+Stable preparation runs cargo-audit 0.22.2 before version or tag mutations.
+
+The updater pins ZIP major 4. The fixes for RUSTSEC-2026-0367, -0368 and -0369
+require ZIP 9; a lock-only major upgrade does not satisfy the updater constraint.
+Keep those findings visible. Updater replacement or a reviewed extraction
+backport, with adversarial archive and native updater tests, is separate work.
+No advisory ignore or major dependency substitution is included here. Source
+use is not a clean native security audit, and trusted publication stays blocked.
 
 - [windows-runtime-signing](../requirements/windows-runtime-signing.md)
 - [0026-tauri-desktop-shell](../../../decisions/0026-tauri-desktop-shell.md)
