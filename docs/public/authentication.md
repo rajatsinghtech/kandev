@@ -6,6 +6,8 @@ status: experimental
 
 # Authentication & Users
 
+> This fork applies additional [security restrictions](security.md#fork-hardening-restrictions). Organizations mode and unsafe active-content previews are unavailable; launch settings require a human administrator login.
+
 Kandev ships as a single-user local tool with authentication **disabled**: nothing changes for laptop installs. When several people share one Kandev server, enable authentication to give each person their own account and their own private workspaces.
 
 Authentication is an **experimental runtime feature toggle** and is disabled in every shipped profile. It uses the same system as the other feature flags, so there is no separate "Authentication" configuration page.

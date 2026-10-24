@@ -2,7 +2,6 @@ package mcp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -113,19 +112,15 @@ func TestProfileEnabledIntentMCP(t *testing.T) {
 				}
 				ctx := authn.WithIdentity(context.Background(), authn.Identity{Synthetic: true})
 				result := callEnabledMCP(t, server, ctx, map[string]any{"profile_id": id, field: "Edited"})
-				if result.IsError {
-					t.Fatalf("supported metadata save failed: %s", firstText(t, result))
-				}
-				var profile dto.AgentProfileDTO
-				if err := json.Unmarshal([]byte(firstText(t, result)), &profile); err != nil {
-					t.Fatal(err)
+				if !result.IsError {
+					t.Fatal("MCP acquired human profile configuration authority")
 				}
 				saved, err := repo.Repository.GetAgentProfile(ctx, id)
-				if err != nil || saved.Enabled != wanted || profile.Enabled != wanted || len(eventBus.profiles) != 1 || eventBus.profiles[0].Enabled != wanted {
-					t.Fatalf("saved=%#v returned=%#v events=%#v error=%v", saved, profile, eventBus.profiles, err)
+				if err != nil || saved.Enabled != initial || len(eventBus.profiles) != 0 || repo.afterRead == nil {
+					t.Fatalf("denied call entered profile mutation: saved=%#v events=%#v error=%v", saved, eventBus.profiles, err)
 				}
-				if (field == "name" && saved.Name != "Edited") || (field == "model" && saved.Model != "Edited") {
-					t.Fatal("metadata edit did not persist")
+				if saved.Name != "Original" || saved.Model != "original-model" {
+					t.Fatal("denied metadata edit persisted")
 				}
 			})
 		}

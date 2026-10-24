@@ -2,7 +2,6 @@ package backendapp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -103,21 +102,12 @@ func TestProfileEnabledIntentCompact(t *testing.T) {
 			}
 			ctx := authn.WithIdentity(context.Background(), authn.Identity{Synthetic: true})
 			response := callEnabledCompact(t, dispatcher, ctx, id, map[string]any{"name": "Edited"})
-			if response.Type != ws.MessageTypeResponse {
-				t.Fatalf("save failed: %s", response.Payload)
-			}
-			var result struct {
-				Profile struct {
-					Enabled bool   `json:"enabled"`
-					Name    string `json:"name"`
-				} `json:"profile"`
-			}
-			if err := json.Unmarshal(response.Payload, &result); err != nil {
-				t.Fatal(err)
+			if response.Type != ws.MessageTypeError {
+				t.Fatalf("configuration tunnel acquired human authority: %s", response.Payload)
 			}
 			saved, err := repo.Repository.GetAgentProfile(ctx, id)
-			if err != nil || saved.Enabled != wanted || result.Profile.Enabled != wanted || saved.Name != "Edited" || result.Profile.Name != "Edited" {
-				t.Fatalf("saved=%#v result=%#v error=%v", saved, result, err)
+			if err != nil || saved.Enabled != initial || saved.Name != "Original" || repo.afterRead == nil {
+				t.Fatalf("denied configuration tunnel mutated profile: saved=%#v error=%v", saved, err)
 			}
 		})
 	}
@@ -131,7 +121,7 @@ func testEnabledCompactControls(t *testing.T) {
 			ctx := authn.WithIdentity(context.Background(), authn.Identity{Synthetic: true})
 			response := callEnabledCompact(t, dispatcher, ctx, id, map[string]any{"enabled": explicit, "name": "Mixed"})
 			saved, err := repo.GetAgentProfile(ctx, id)
-			if response.Type != ws.MessageTypeResponse || err != nil || saved.Enabled != explicit || saved.Name != "Mixed" {
+			if response.Type != ws.MessageTypeError || err != nil || saved.Enabled != !explicit || saved.Name != "Original" {
 				t.Fatalf("response=%s saved=%#v error=%v", response.Payload, saved, err)
 			}
 		})

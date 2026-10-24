@@ -104,7 +104,7 @@ func writeStartupConfiguration(output *strings.Builder, cfg *config.Config) {
 
 func startupServerHostSource(cfg *config.Config) string {
 	if cfg == nil {
-		return "built-in default (0.0.0.0)"
+		return "built-in default (127.0.0.1)"
 	}
 	switch cfg.SourceFor("server.host") {
 	case config.SourceEnvironment:
@@ -114,7 +114,7 @@ func startupServerHostSource(cfg *config.Config) string {
 	case config.SourceProfile:
 		return "profile defaults"
 	case config.SourceDefault:
-		return "built-in default (0.0.0.0)"
+		return "built-in default (127.0.0.1)"
 	default:
 		return string(cfg.SourceFor("server.host"))
 	}

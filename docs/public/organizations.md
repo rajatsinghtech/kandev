@@ -6,6 +6,8 @@ status: experimental
 
 # Organizations
 
+> This fork applies additional [security restrictions](security.md#fork-hardening-restrictions). Organizations mode and unsafe active-content previews are unavailable; launch settings require a human administrator login.
+
 An organization is an experimental **tenant identifier** above users. Normal authorized request paths use it to scope workspaces, tasks, sessions, and secrets. The current implementation is not yet a hard boundary between mutually untrusting tenants: user administration and install-wide system operations have cross-organization gaps, and ordinary WebSocket notification fan-out can fail open on resolution errors. See [Current limits](#current-limits).
 
 Use organizations to evaluate tenant-aware behavior or organize trusted groups on one server. If groups must be isolated from one another, run separate Kandev instances until the current gaps are closed. If everyone on your server is one team, use [Team Access](team-access.md) instead, which is about sharing *within* one organization.

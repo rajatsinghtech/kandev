@@ -63,6 +63,7 @@ type checkoutSettingsFixture struct {
 	gate       *checkoutSettingsGate
 	events     *checkoutSettingsEvents
 	dispatch   *ws.Dispatcher
+	operations *settingsOperations
 }
 
 func checkoutSettingsHarness(t *testing.T) *checkoutSettingsFixture {
@@ -98,7 +99,20 @@ func checkoutSettingsHarness(t *testing.T) *checkoutSettingsFixture {
 	h.SetSettingsOperations(operations)
 	dispatcher := ws.NewDispatcher()
 	h.RegisterHandlers(dispatcher)
-	return &checkoutSettingsFixture{api: api, other: other, store: store, db: first, gate: gate, events: events, dispatch: dispatcher}
+	return &checkoutSettingsFixture{api: api, other: other, store: store, db: first, gate: gate, events: events, dispatch: dispatcher, operations: operations}
+}
+
+func (f *checkoutSettingsFixture) saveDomain(t *testing.T, ctx context.Context, changes map[string]any, workspace string) *ws.Message {
+	t.Helper()
+	raw, err := json.Marshal(changes)
+	require.NoError(t, err)
+	var fields map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(raw, &fields))
+	value, err := f.operations.UpdateSettings(ctx, settingscatalog.ResourceTarget{ResourceType: "repository", ResourceID: checkoutSettingsPtr("settings-repo"), WorkspaceID: &workspace}, fields, nil)
+	require.NoError(t, err)
+	response, err := ws.NewResponse("domain", "settings", value)
+	require.NoError(t, err)
+	return response
 }
 func checkoutSettingsPtr[T any](v T) *T { return &v }
 func checkoutSettingsContext(ctx context.Context) context.Context {
@@ -124,7 +138,7 @@ func TestRepositoryCheckoutDefaultsGuardedMCP(t *testing.T) {
 			_, err := f.other.UpdateRepository(ctx, "settings-repo", &taskservice.UpdateRepositoryRequest{DefaultBranch: checkoutSettingsPtr("develop"), PullBeforeWorktree: checkoutSettingsPtr(false)})
 			require.NoError(t, err)
 		}
-		response := f.save(t, ctx, map[string]any{"repository.name": "Saved"}, "settings-ws")
+		response := f.saveDomain(t, ctx, map[string]any{"repository.name": "Saved"}, "settings-ws")
 		require.Equal(t, ws.MessageTypeResponse, response.Type, "%s", response.Payload)
 		require.Zero(t, f.gate.remaining)
 		var payload struct {
@@ -160,7 +174,7 @@ func TestRepositoryCheckoutDefaultsGuardedMCP(t *testing.T) {
 		secret := &secrets.SecretWithValue{Secret: secrets.Secret{Name: "Settings token", Scope: secrets.ScopeWorkspace, WorkspaceID: "settings-ws"}, Value: "disposable-sensitive-value"}
 		require.NoError(t, catalog.Create(t.Context(), secret))
 		f.api.SetSecretStore(catalog)
-		response := f.save(t, checkoutSettingsContext(t.Context()), map[string]any{"default_branch": "", "pull_before_worktree": false, "secret_bindings": []any{map[string]any{"key": "TOKEN", "secret_id": secret.ID}}}, "settings-ws")
+		response := f.saveDomain(t, checkoutSettingsContext(t.Context()), map[string]any{"default_branch": "", "pull_before_worktree": false, "secret_bindings": []any{map[string]any{"key": "TOKEN", "secret_id": secret.ID}}}, "settings-ws")
 		require.Equal(t, ws.MessageTypeResponse, response.Type, "%s", response.Payload)
 		var payload map[string]any
 		require.NoError(t, json.Unmarshal(response.Payload, &payload))
@@ -173,7 +187,7 @@ func TestRepositoryCheckoutDefaultsGuardedMCP(t *testing.T) {
 		require.NotContains(t, binding, "value")
 		require.NotContains(t, string(response.Payload), secret.Value)
 	})
-	for _, kind := range []string{"null", "wrong_workspace", "caller_absent", "foreign_caller", "coordinator_guard"} {
+	for _, kind := range []string{"valid_programmatic_configuration", "null", "wrong_workspace", "caller_absent", "foreign_caller", "coordinator_guard"} {
 		t.Run(kind, func(t *testing.T) {
 			f := checkoutSettingsHarness(t)
 			ctx := checkoutSettingsContext(t.Context())

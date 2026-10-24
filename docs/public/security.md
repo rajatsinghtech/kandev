@@ -9,6 +9,47 @@ Kandev is a developer workbench that runs agents with access to repositories, to
 
 > Kandev authentication is opt-in. When it is disabled, requests receive the synthetic single-user administrator identity, so network reachability is administrator reachability. When authentication is enabled, accounts and workspace authorization apply, but shared executors and agent profiles, the host filesystem account, cluster credentials, and agent-accessible APIs remain separate trust boundaries. See [Authentication & Users](authentication.md).
 
+## Fork hardening restrictions
+
+Upstream `npx kandev` packages and `ghcr.io/kdlbs/kandev` images do not include
+these fork fixes. Build this fork branch from source or build your own image;
+no signed fork binary or fork container release is currently available.
+
+This fork requires an authenticated human administrator session for launch-affecting
+agent settings and sensitive configuration reads. Enable Authentication & users
+and complete local setup before configuring agents. A replayed boot interlock,
+an agent JWT, or a PAT does not grant that UI authority. MCP retains redacted
+agent selection metadata but cannot change launcher, executor, or shared prompt
+configuration through the configuration tunnel.
+
+Account/invitation administration, backup access and installation changes also
+require a human administrator session. Password, token and session management
+require a browser session. With login disabled, enabling authentication and
+restarting remain available so local setup can be completed.
+
+Active port previews, embedded VS Code, and generated canvas runtimes return
+`503 isolated_origin_required`. They are unavailable until a separate content
+site is implemented. HTML, XHTML, SVG, and XML served by API file routes are
+forced to download with a restrictive sandbox policy instead of executing on
+the operator origin. Ordinary board, task, and coding-agent work remains available.
+
+Organizations mode is refused at startup, including persisted feature overrides,
+because this fork does not yet provide a verified credential-execution boundary.
+Use a dedicated OS account and separate Kandev instance per trust group. This
+restriction does not turn Local or Worktree executors into sandboxes and does
+not protect credentials from a malicious process using the same OS account.
+
+Stable desktop publication requires complete Windows signing, Apple notarization,
+and Tauri updater inputs, plus a fork-owned updater public key and endpoint.
+Missing prerequisites stop publication; unsigned development validation artifacts
+remain available. No signed fork binaries have been published by this change.
+
+The native audit also blocks release on three unresolved ZIP-extraction advisories
+in the pinned Tauri updater dependency. The two certificate-library advisories
+found in the same audit have compatible patch upgrades in this branch. Do not
+treat the fork as having a clean dependency audit until the updater archive
+dependency has been replaced or patched and verified.
+
 ## Quick checklist
 
 - Keep the backend on loopback or behind an authenticated TLS proxy.
@@ -25,7 +66,7 @@ Kandev is a developer workbench that runs agents with access to repositories, to
 | A trusted team | Dedicated host or service account, identity-aware proxy, private network, scoped credentials, and separate deployments for different trust groups | Treating the Kandev UI as a tenant or role boundary |
 | Unattended automation | Dedicated agent and executor profiles, narrow repository credentials, workflow limits, and provider-side branch protection | Reusing a developer's broad personal token or enabling unrestricted approval bypasses |
 
-The default backend host is `0.0.0.0`. Plain `kandev`, `kandev run`, and `npx kandev@latest` commands inherit that all-interface bind unless you override it. For local-only access, set `KANDEV_SERVER_HOST=127.0.0.1` before launch; configure an equivalent protected bind for a managed service. Browser origin and CORS checks reduce accidental cross-site access, but they do not identify or authorize a user. `auth.jwtSecret` is compatibility configuration and does not enable product login.
+This fork defaults the backend listener to `127.0.0.1`. Plain CLI and service startup stay on loopback unless you explicitly configure another address. For local-only access, set `KANDEV_SERVER_HOST=127.0.0.1` before launch; configure an equivalent protected bind for a managed service. Browser origin and CORS checks reduce accidental cross-site access, but they do not identify or authorize a user. `auth.jwtSecret` is compatibility configuration and does not enable product login.
 
 ```bash
 KANDEV_SERVER_HOST=127.0.0.1 kandev

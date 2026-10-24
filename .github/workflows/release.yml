@@ -36,8 +36,8 @@ name: release
 #   RELEASE_GPG_FINGERPRINT — variable containing the key's full fingerprint
 # Optional configuration in the `release` environment:
 #   RELEASE_GPG_PASSPHRASE — secret containing the private key passphrase
-# Optional secrets for signed desktop artifacts. If these are incomplete, the
-# workflow still builds unsigned desktop artifacts and warns in release notes.
+# Required secrets for Stable desktop publication in this fork. Incomplete inputs
+# block publication; unsigned artifacts are for development validation only.
 #   APPLE_CERTIFICATE / APPLE_CERTIFICATE_PASSWORD / KEYCHAIN_PASSWORD — macOS Developer ID signing
 #   APPLE_ID / APPLE_PASSWORD / APPLE_TEAM_ID or APPLE_API_KEY / APPLE_API_ISSUER / APPLE_API_KEY_P8 — macOS notarization
 #   WINDOWS_CERTIFICATE / WINDOWS_CERTIFICATE_PASSWORD — Windows installer signing
@@ -121,6 +121,29 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Require signed desktop publication inputs
+        if: ${{ !inputs.dry_run && !inputs.desktop_validation_only }}
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: python3 scripts/release/trusted-desktop-policy.py --repository "${{ github.repository }}"
+
+      - name: Audit desktop dependencies before Stable publication
+        if: ${{ !inputs.dry_run && !inputs.desktop_validation_only }}
+        run: |
+          cargo install cargo-audit --version 0.22.2 --locked
+          cargo audit --file apps/desktop/src-tauri/Cargo.lock
 
       - name: Require main for normal release
         if: ${{ !inputs.dry_run && !inputs.desktop_validation_only && inputs.backfill_tag == '' }}
@@ -1967,6 +1990,23 @@ jobs:
             }
           }
 
+      - name: Verify macOS publisher identity and notarization
+        if: startsWith(matrix.platform, 'macos-') && !inputs.desktop_validation_only
+        run: |
+          set -euo pipefail
+          bundle_dir="apps/desktop/src-tauri/target/${{ matrix.rust_target }}/release/bundle"
+          if [ ! -d "$bundle_dir" ]; then
+            bundle_dir="apps/desktop/src-tauri/target/release/bundle"
+          fi
+          found=false
+          while IFS= read -r -d '' app; do
+            found=true
+            codesign --verify --deep --strict "$app"
+            spctl --assess --type execute "$app"
+            xcrun stapler validate "$app"
+          done < <(find "$bundle_dir" -type d -name '*.app' -prune -print0)
+          test "$found" = true
+
       - name: Collect desktop artifacts
         run: |
           set -euo pipefail
@@ -2937,8 +2977,7 @@ jobs:
             --tag "${{ needs.prepare.outputs.tag }}" \
             --repository "${{ github.repository }}" \
             --notes-file RELEASE_NOTES.md \
-            --pub-date "$pub_date" \
-            --allow-unsigned
+            --pub-date "$pub_date"
           if [ -f dist/release-assets/latest.json ]; then
             node scripts/release/updater-manifest.mjs verify \
               --assets-dir dist/release-assets \
@@ -2947,6 +2986,22 @@ jobs:
               --tag "${{ needs.prepare.outputs.tag }}" \
               --repository "${{ github.repository }}"
           fi
+
+      - name: Recheck trusted desktop publication policy
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: python3 scripts/release/trusted-desktop-policy.py --repository "${{ github.repository }}"
 
       - name: Publish release
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2

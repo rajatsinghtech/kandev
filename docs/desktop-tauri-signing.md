@@ -1,6 +1,6 @@
 # Tauri Desktop Signing
 
-The release workflow signs desktop artifacts opportunistically. Complete macOS and Windows signing inputs produce signed/notarized artifacts. Missing or incomplete inputs do not block the release; those platform artifacts are built unsigned and the GitHub release notes get an unsigned-artifact warning.
+This fork requires complete publisher-signing and notarization inputs before a trusted Stable release can create tags or publish downloads. A publication recheck and native artifact verification also run before upload. Missing inputs block trusted publication; `desktop_validation_only=true` remains available for unsigned development inspection.
 
 Unsigned desktop artifacts may require manual OS security bypasses and must not be presented as trusted downloads.
 
@@ -50,9 +50,9 @@ The corresponding public key is embedded in the desktop updater configuration; t
 
 Tauri updater signing proves payload integrity and is required for every target. macOS
 signing/notarization and Windows code signing separately prove publisher identity to the operating
-system. Missing OS credentials do not block Tauri-signed updater artifacts; those macOS and Windows
-builds retain the unsigned-development warning in release notes until identity signing is
-configured. See ADR-0040.
+system. Missing OS credentials block trusted Stable publication in this fork. Configure a fork-owned
+updater key and the matching public key in `tauri.conf.json` before release. The inherited upstream
+public key is deliberately rejected by the fork publication policy. See ADR-0040 for upstream behavior.
 
 The collector verifies each payload cryptographically with the same public key embedded in
 `tauri.conf.json`. A CI private key that does not match the shipped public key fails before

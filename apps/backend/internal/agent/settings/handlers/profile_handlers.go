@@ -320,7 +320,7 @@ func (h *Handlers) broadcastProfileEvent(ctx context.Context, action string, pro
 		}
 	}
 	notification, _ := ws.NewNotification(action, gin.H{
-		"profile":           profile,
+		"profile":           dto.RedactedProfileCatalog(*profile),
 		"inference_capable": inferenceCapable,
 	})
 	if profile.WorkspaceID != "" {

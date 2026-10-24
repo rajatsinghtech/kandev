@@ -16,6 +16,7 @@ import (
 )
 
 type serviceFixture struct {
+	db        *sqlx.DB
 	svc       *Service
 	users     userstore.Repository
 	backfills *[]string
@@ -53,7 +54,7 @@ func newServiceFixture(t *testing.T, authEnabled bool) *serviceFixture {
 	if err != nil {
 		t.Fatalf("new service: %v", err)
 	}
-	return &serviceFixture{svc: svc, users: users, backfills: &claimed}
+	return &serviceFixture{db: conn, svc: svc, users: users, backfills: &claimed}
 }
 
 // enableAuth flips the features.auth flag on and recomputes the mode, the way

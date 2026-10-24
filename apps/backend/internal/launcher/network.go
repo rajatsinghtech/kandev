@@ -41,6 +41,9 @@ func resolveBackendEndpoints(cfg *config.Config, port int) (backendEndpointSet, 
 		host := endpointHost(bind)
 		healthURL := backendURLForHost(host, port) + "/health"
 		accessURL := backendURLForHost(browserEndpointHost(bind, host), port)
+		if server.Host == "" && len(server.Hosts) == 0 {
+			accessURL = backendURLForHost("localhost", port)
+		}
 		if _, ok := seen[healthURL]; ok {
 			continue
 		}

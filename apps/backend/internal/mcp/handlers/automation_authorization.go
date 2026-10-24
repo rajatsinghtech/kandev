@@ -21,6 +21,10 @@ type guardedMCPDispatcher struct {
 
 func (d *guardedMCPDispatcher) RegisterFunc(action string, handler ws.HandlerFunc) {
 	d.Dispatcher.RegisterFunc(action, func(ctx context.Context, msg *ws.Message) (*ws.Message, error) {
+		if _, humanOnly := humanOnlyMCPActions[action]; humanOnly {
+			return ws.NewError(msg.ID, msg.Action, ws.ErrorCodeUnknownAction,
+				"launch configuration requires the authenticated administration UI", nil)
+		}
 		ctx = d.handlers.withCoordinatorCaller(ctx)
 		guarded, replacement, err := d.handlers.authorizeAutomationRequest(ctx, msg)
 		if guarded != nil {
@@ -35,6 +39,26 @@ func (d *guardedMCPDispatcher) RegisterFunc(action string, handler ws.HandlerFun
 		d.handlers.recordCoordinatorCall(ctx, msg, true)
 		return handler(ctx, replacement)
 	})
+}
+
+// MCP principals do not carry human launch-configuration authority.
+var humanOnlyMCPActions = map[string]struct{}{
+	ws.ActionMCPUpdateAgent:           {},
+	ws.ActionMCPCreateAgentProfile:    {},
+	ws.ActionMCPUpdateAgentProfile:    {},
+	ws.ActionMCPDeleteAgentProfile:    {},
+	ws.ActionMCPGetMcpConfig:          {},
+	ws.ActionMCPUpdateMcpConfig:       {},
+	ws.ActionMCPGetSettings:           {},
+	ws.ActionMCPUpdateSettings:        {},
+	ws.ActionMCPListSettingsResources: {},
+	ws.ActionMCPListExecutors:         {},
+	ws.ActionMCPListExecutorProfiles:  {},
+	ws.ActionMCPCreateExecutorProfile: {},
+	ws.ActionMCPUpdateExecutorProfile: {},
+	ws.ActionMCPDeleteExecutorProfile: {},
+	ws.ActionMCPCreateSharedPrompt:    {},
+	ws.ActionMCPUpdateSharedPrompt:    {},
 }
 
 // automationSurfaceActions is the execution-time mirror of the fixed

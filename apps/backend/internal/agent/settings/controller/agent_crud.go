@@ -13,6 +13,7 @@ import (
 	"github.com/kandev/kandev/internal/agent/discovery"
 	"github.com/kandev/kandev/internal/agent/settings/dto"
 	"github.com/kandev/kandev/internal/agent/settings/models"
+	"github.com/kandev/kandev/internal/auth/authn"
 )
 
 func (c *Controller) GetAgent(ctx context.Context, id string) (*dto.AgentDTO, error) {
@@ -36,6 +37,9 @@ func (c *Controller) GetAgent(ctx context.Context, id string) (*dto.AgentDTO, er
 	c.applyCapabilityStatus(&result, agent.Name)
 	c.applyBillingType(&result, agent.Name)
 	c.applyProviderSupport(&result, agent.Name)
+	if id, _ := authn.IdentityFromContext(ctx); !authn.HumanAdministrationSession(id) {
+		result = dto.RedactedAgentCatalog(result)
+	}
 	return &result, nil
 }
 
@@ -63,6 +67,9 @@ func (c *Controller) ListAgents(ctx context.Context) (*dto.ListAgentsResponse, e
 		c.applyCapabilityStatus(&entry, agent.Name)
 		c.applyBillingType(&entry, agent.Name)
 		c.applyProviderSupport(&entry, agent.Name)
+		if id, _ := authn.IdentityFromContext(ctx); !authn.HumanAdministrationSession(id) {
+			entry = dto.RedactedAgentCatalog(entry)
+		}
 		payload = append(payload, entry)
 	}
 	c.sortAgentsByDisplayOrder(payload)

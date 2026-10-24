@@ -528,7 +528,7 @@ func (h *Handlers) broadcastAvailableAgentsAsync() {
 			return
 		}
 		notification, _ := ws.NewNotification(ws.ActionAgentAvailableUpdated, gin.H{
-			"agents": availableResp.Agents,
+			"agents": dto.RedactedAvailableCatalog(availableResp.Agents),
 		})
 		h.hub.Broadcast(notification)
 	}()

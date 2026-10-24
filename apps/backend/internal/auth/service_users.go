@@ -9,15 +9,28 @@ import (
 
 	"github.com/kandev/kandev/internal/auth/store"
 	usermodels "github.com/kandev/kandev/internal/user/models"
+	userstore "github.com/kandev/kandev/internal/user/store"
 )
 
 // ListUsers returns all users for the admin UI.
 func (s *Service) ListUsers(ctx context.Context) ([]*usermodels.User, error) {
+	if s.cfg.Features.MultiTenancy {
+		id, repo, err := s.tenantAccounts(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return repo.ListUsersByOrg(ctx, id.OrgID)
+	}
 	return s.users.ListUsers(ctx)
 }
 
 // AdminCreateUser creates a user with a password directly (no invite).
 func (s *Service) AdminCreateUser(ctx context.Context, email, password, displayName, role string) (*usermodels.User, error) {
+	if s.cfg.Features.MultiTenancy {
+		if _, err := s.tenantAdministrator(ctx); err != nil {
+			return nil, err
+		}
+	}
 	email = normalizeEmail(email)
 	if err := validateEmailPassword(email, password); err != nil {
 		return nil, err
@@ -47,6 +60,9 @@ func (s *Service) AdminCreateUser(ctx context.Context, email, password, displayN
 // AdminSetRoleStatus updates a user's role and/or status with a last-admin
 // guard. Disabling a user revokes all of their sessions and API tokens.
 func (s *Service) AdminSetRoleStatus(ctx context.Context, targetID, role, status string) (*usermodels.User, error) {
+	if s.cfg.Features.MultiTenancy {
+		return s.setTenantAccount(ctx, targetID, role, status)
+	}
 	target, err := s.users.GetUser(ctx, targetID)
 	if err != nil {
 		return nil, err
@@ -73,6 +89,29 @@ func (s *Service) AdminSetRoleStatus(ctx context.Context, targetID, role, status
 		return nil, err
 	}
 	if status == usermodels.StatusDisabled {
+		if err := s.store.DeleteSessionsByUser(ctx, targetID, ""); err != nil {
+			return nil, err
+		}
+		if err := s.store.DeleteAPITokensByUser(ctx, targetID); err != nil {
+			return nil, err
+		}
+	}
+	return updated, nil
+}
+
+func (s *Service) setTenantAccount(ctx context.Context, targetID, role, status string) (*usermodels.User, error) {
+	id, repo, err := s.tenantAccounts(ctx)
+	if err != nil {
+		return nil, err
+	}
+	updated, err := repo.UpdateUserRoleStatusInOrg(ctx, targetID, id.OrgID, role, status)
+	if errors.Is(err, userstore.ErrLastOrgAdmin) {
+		return nil, ErrLastAdmin
+	}
+	if err != nil {
+		return nil, err
+	}
+	if updated.Status == usermodels.StatusDisabled {
 		if err := s.store.DeleteSessionsByUser(ctx, targetID, ""); err != nil {
 			return nil, err
 		}

@@ -5,6 +5,8 @@ description: "Choose and configure local, worktree, Docker, Kubernetes, SSH, or 
 
 # Executors
 
+> This fork applies additional [security restrictions](security.md#fork-hardening-restrictions). Organizations mode and unsafe active-content previews are unavailable; launch settings require a human administrator login.
+
 An executor determines where Kandev creates a task environment and runs `agentctl`, the selected agent, terminals, and Git commands. An executor profile supplies reusable settings for that executor. A task environment is the concrete workspace created for one task; several sessions may reuse it.
 
 ## Quick path

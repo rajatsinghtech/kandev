@@ -30,7 +30,10 @@ func newPromptWriteFixture(t *testing.T) (*Handlers, *promptservice.Service, *ws
 	h.SetPromptReader(svc)
 	h.SetPromptWriter(svc, func() bool { return true })
 	dispatcher := ws.NewDispatcher()
-	h.RegisterHandlers(dispatcher)
+	// Exercise prompt business rules directly; the public guarded dispatcher is
+	// covered by TestMCPDoesNotGrantLaunchConfigurationAuthority.
+	dispatcher.RegisterFunc(ws.ActionMCPCreateSharedPrompt, h.handleCreateSharedPrompt)
+	dispatcher.RegisterFunc(ws.ActionMCPUpdateSharedPrompt, h.handleUpdateSharedPrompt)
 	return h, svc, dispatcher
 }
 

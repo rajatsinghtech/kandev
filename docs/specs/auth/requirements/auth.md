@@ -9,17 +9,17 @@ owners:
 
 ## Overview
 
-Kandev ships as a single-user local tool with zero authentication: the backend binds `0.0.0.0` by default and anyone who can reach the port owns the instance and every agent credential on it. Teams who share a Kandev server (VPS, homelab, office box) need user accounts and privacy between users — without burdening the local single-user install with a login screen it never asked for.
+Kandev ships as a single-user local tool with zero authentication: this fork binds loopback by default and anyone who can reach the port owns the instance and every agent credential on it. Teams who share a Kandev server (VPS, homelab, office box) need user accounts and privacy between users — without burdening the local single-user install with a login screen it never asked for.
 
 ## Requirements
 
 ### REQ-AUTH-AUTH-001: Opt-in Authentication & Multi-User Segregation
 
-**Intent:** Kandev ships as a single-user local tool with zero authentication: the backend binds `0.0.0.0` by default and anyone who can reach the port owns the instance and every agent credential on it. Teams who share a Kandev server (VPS, homelab, office box) need user accounts and privacy between users — without burdening the local single-user install with a login screen it never asked for.
+**Intent:** Kandev ships as a single-user local tool with zero authentication: this fork binds loopback by default and anyone who can reach the port owns the instance and every agent credential on it. Teams who share a Kandev server (VPS, homelab, office box) need user accounts and privacy between users — without burdening the local single-user install with a login screen it never asked for.
 
 #### Acceptance criteria
 
-- **AC-AUTH-AUTH-001.1:** **Opt-in.** Authentication is OFF by default. A disabled instance behaves byte-identically to pre-auth Kandev — no login, no auth UI.
+- **AC-AUTH-AUTH-001.1:** **Opt-in.** Authentication is OFF by default. A disabled instance retains local board and task use. Privileged launch settings require an authenticated human administration session in this fork; see `operator-control-boundary.md`.
 - **AC-AUTH-AUTH-001.2:** **Enablement is a runtime feature toggle.** Authentication is turned on/off through the `features.auth` runtime flag ("Authentication & users" in `Settings > System > Feature Toggles`, or `KANDEV_FEATURES_AUTH=true`) — a restart-required flag like the other feature toggles, with no separate Authentication settings page. Turning it on (and restarting) enters **setup mode**: the first visitor completes a wizard (email + password) and becomes the admin. The wizard promotes the existing single-user profile — settings, workspaces, and secrets carry over to the admin account. The effective mode is derived: `flag off → disabled`, `flag on + no admin → setup`, `flag on + admin exists → enabled`.
 - **AC-AUTH-AUTH-001.3:** **Accounts.** Local email + password (argon2id). The identity schema is provider-based so OIDC/SSO can be added later without migration. Roles: `admin` (user management, auth settings, destructive system operations, feature toggles) and `member`. Users can be disabled (revokes all sessions and tokens); the last active admin cannot be demoted or disabled.
 - **AC-AUTH-AUTH-001.4:** **Sessions & tokens.** Browser sessions are opaque cookies with the base session-cookie name `kandev_session` (effective name is request-host derived — see the port-scoping bullet below), HttpOnly, SameSite=Lax, sliding 30-day expiry, DB-backed and revocable from `Settings > Account`. Programmatic clients (external MCP, scripts, CI) use personal access tokens (`kandev_pat_…`, shown once, revocable).
@@ -33,7 +33,7 @@ Kandev ships as a single-user local tool with zero authentication: the backend b
 ## Why
 
 Kandev ships as a single-user local tool with zero authentication: the backend
-binds `0.0.0.0` by default and anyone who can reach the port owns the instance
+binds loopback by default and anyone who can reach the port owns the instance
 and every agent credential on it. Teams who share a Kandev server (VPS, homelab,
 office box) need user accounts and privacy between users — without burdening
 the local single-user install with a login screen it never asked for.

@@ -11,7 +11,6 @@ import (
 
 	"github.com/kandev/kandev/internal/common/logger"
 	"github.com/kandev/kandev/internal/orchestrator/messagequeue"
-	"github.com/kandev/kandev/internal/task/dto"
 	"github.com/kandev/kandev/internal/task/models"
 	"github.com/kandev/kandev/internal/task/service"
 	workflowmodels "github.com/kandev/kandev/internal/workflow/models"
@@ -1334,21 +1333,8 @@ func TestRegisterHandlers_ListExecutorsActionDispatches(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotNil(t, resp)
-	require.Equal(t, ws.MessageTypeResponse, resp.Type)
+	assertWSError(t, resp, ws.ErrorCodeUnknownAction)
 	assert.Equal(t, ws.ActionMCPListExecutors, resp.Action)
-
-	var payload dto.ListExecutorsResponse
-	require.NoError(t, json.Unmarshal(resp.Payload, &payload))
-	assert.Equal(t, len(payload.Executors), payload.Total)
-	assert.Contains(t, executorIDs(payload.Executors), models.ExecutorIDLocal)
-}
-
-func executorIDs(executors []dto.ExecutorDTO) []string {
-	ids := make([]string, 0, len(executors))
-	for _, executor := range executors {
-		ids = append(ids, executor.ID)
-	}
-	return ids
 }
 
 // --- Helper function tests ---

@@ -23,6 +23,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/kandev/kandev/internal/auth"
+	"github.com/kandev/kandev/internal/auth/authn"
 	"github.com/kandev/kandev/internal/auth/hostnames"
 	authhttpmw "github.com/kandev/kandev/internal/auth/httpmw"
 	"github.com/kandev/kandev/internal/authz"
@@ -393,7 +394,7 @@ func initializeApplication(ctx context.Context, cfg *config.Config, log *logger.
 // no-op when no runtime-flag repository is configured.
 func applyStartupRuntimeFlags(ctx context.Context, cfg *config.Config, repos *Repositories, log *logger.Logger) bool {
 	if repos.RuntimeFlags == nil {
-		return true
+		return config.ValidateExecutionIsolation(cfg) == nil
 	}
 	svc := runtimeflags.NewService(repos.RuntimeFlags, runtimeflags.OptionsFromConfig(cfg))
 	states, err := svc.ListStates(ctx)
@@ -402,6 +403,12 @@ func applyStartupRuntimeFlags(ctx context.Context, cfg *config.Config, repos *Re
 		return false
 	}
 	runtimeflags.ApplyStatesToConfig(cfg, states)
+	if err := config.ValidateExecutionIsolation(cfg); err != nil {
+		if log != nil {
+			log.Error("Unsafe executor configuration", zap.Error(err))
+		}
+		return false
+	}
 	return true
 }
 
@@ -3099,6 +3106,7 @@ func buildHTTPServer(
 	// Opt-in authentication. In disabled mode it only injects the synthetic
 	// single-user identity (behavior unchanged).
 	router.Use(authhttpmw.Middleware(services.Auth))
+	router.Use(authn.ControlPlaneBoundary(cfg.Features.MultiTenancy))
 	// Per-user workspace ownership on the third-party integration route
 	// groups (jira/gitlab/github/...), which resolve a caller-supplied
 	// workspace_id with no gate of their own. No-op when auth is disabled.

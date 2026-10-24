@@ -32,8 +32,10 @@ import (
 	"github.com/kandev/kandev/internal/auth"
 	"github.com/kandev/kandev/internal/auth/authn"
 	"github.com/kandev/kandev/internal/auth/hostnames"
+	authstore "github.com/kandev/kandev/internal/auth/store"
 	"github.com/kandev/kandev/internal/authz"
 	"github.com/kandev/kandev/internal/common/logger"
+	userstore "github.com/kandev/kandev/internal/user/store"
 )
 
 // Handlers carries the auth HTTP handler dependencies.
@@ -232,6 +234,10 @@ func requireIdentity(c *gin.Context) (authn.Identity, bool) {
 
 func (h *Handlers) writeAuthError(c *gin.Context, err error) {
 	switch {
+	case errors.Is(err, userstore.ErrAccountNotFound), errors.Is(err, authstore.ErrNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+	case errors.Is(err, auth.ErrAdministrationDenied):
+		c.JSON(http.StatusForbidden, gin.H{"error": "administration access denied"})
 	case errors.Is(err, auth.ErrRateLimited):
 		c.JSON(http.StatusTooManyRequests, gin.H{"error": err.Error()})
 	case errors.Is(err, auth.ErrInvalidCredentials):
