@@ -47,9 +47,9 @@ Use `scripts/release/prepare-desktop-runtime.sh` and `scripts/release/verify-des
 ## Release
 
 Desktop artifacts are built in `.github/workflows/release.yml` after the platform runtime bundles.
-macOS and Windows signing is automatic: complete signing/notarization secrets produce signed
-artifacts; missing or incomplete inputs produce unsigned desktop artifacts with a release-notes
-warning. A separate Tauri updater key signs `.app.tar.gz`, `.AppImage.tar.gz`, and NSIS updater
+This fork requires complete macOS and Windows publisher-signing inputs for trusted Stable
+publication. Missing inputs block public releases; unsigned builds are development validation
+artifacts. Native signature verification and macOS notarization checks precede collection. A separate Tauri updater key signs `.app.tar.gz`, `.AppImage.tar.gz`, and NSIS updater
 bundles and enables `latest.json`; unsigned installers are never advertised by the updater. Use
 `desktop_validation_only=true` for artifact-only validation runs that skip the release PR, tag,
 publish jobs, and public container tags.

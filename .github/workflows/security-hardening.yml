@@ -1,0 +1,47 @@
+name: Security hardening regression checks
+
+on:
+  push:
+    branches: [security/hardening-design]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  security-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GOMAXPROCS: "4"
+      GIN_MODE: release
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@5064d95ba18d4a9dda7c4cc67adeb03aea1a2a14 # v7.0.0
+        with:
+          go-version-file: apps/backend/go.mod
+          cache-dependency-path: apps/backend/go.sum
+      - name: Authentication and listener regressions
+        working-directory: apps/backend
+        run: go test -race ./internal/auth/... ./internal/user/store/... ./internal/common/config ./internal/launcher -count=1
+      - name: Agent catalog and configuration tunnel regressions
+        working-directory: apps/backend
+        run: |
+          go test ./internal/agent/settings/dto ./internal/agent/settings/controller ./internal/agent/settings/handlers -run 'TestAgentCatalog|TestListAgents|TestGetAgent|TestRegisterRoutesRejectsMutationWithoutInterimSettingsInterlock' -count=1
+          go test ./internal/mcp/handlers -run TestMCPDoesNotGrantLaunchConfigurationAuthority -count=1
+          go test ./internal/backendapp -run TestStartupRejectsPersistedUnisolatedTenancy -count=1
+      - name: Desktop publication policy
+        run: |
+          python3 .github/scripts/trusted-desktop-policy_test.py
+          python3 .github/scripts/release-workflow-contract_test.py
+          python3 .github/scripts/lint-action-pinning_test.py
+      - name: Specification and documentation contracts
+        run: |
+          python3 scripts/list-docs.py validate
+          python3 scripts/lint-spec-files.py --all
+          python3 scripts/lint-spec-files.test.py
+          git diff --check

@@ -210,15 +210,14 @@ func (c *Config) ResolvedDataDir() string {
 	return filepath.Join(c.ResolvedHomeDir(), "data")
 }
 
-// defaultServerHost is the wildcard host the server binds to when no host is
-// configured — every interface.
-const defaultServerHost = "0.0.0.0"
+// defaultServerHost keeps an unconfigured server private to this machine.
+const defaultServerHost = "127.0.0.1"
 
 // ServerConfig holds HTTP server configuration.
 type ServerConfig struct {
 	// Host is the bind address. A single value (e.g. "127.0.0.1") behaves as
 	// it always has; a comma-separated list (e.g. "127.0.0.1,100.64.0.1")
-	// binds one listener per address. Empty means the wildcard default.
+	// binds one listener per address. Empty means the loopback default.
 	//
 	// Host carries the KANDEV_SERVER_HOST env override, so when it is set it
 	// wins over Hosts to preserve env-over-file precedence (see ResolvedBinds).
@@ -330,7 +329,7 @@ func IsLoopbackHost(h string) bool {
 // host is rejected regardless of its position relative to a wildcard. If any
 // entry is a wildcard (empty/0.0.0.0/:: or an unspecified IP) the whole set
 // collapses to that single wildcard, since it already binds every interface. An
-// empty result falls back to the wildcard default.
+// empty result falls back to the loopback default.
 func (c *ServerConfig) ResolvedBinds() ([]string, error) {
 	raw := splitHosts(c.Host)
 	if len(raw) == 0 {
@@ -703,9 +702,9 @@ func detectDefaultLogFormat() string {
 
 // setDefaults configures default values for all configuration options.
 func setDefaults(v *viper.Viper) {
-	// Server defaults. Host defaults to empty (not the wildcard) so an unset
+	// Server defaults. Host defaults to empty so an unset
 	// host is distinguishable from an explicit one: ResolvedBinds falls back to
-	// server.hosts only when host is unset, and empty resolves to the wildcard
+	// server.hosts only when host is unset, and empty resolves to the loopback
 	// default. This keeps KANDEV_SERVER_HOST winning over a config-file
 	// server.hosts.
 	v.SetDefault("server.host", "")
@@ -943,6 +942,9 @@ func loadWithPath(configPath, homeDir string) (*Config, error) {
 // In development mode (default), most fields are optional.
 func validate(cfg *Config) error {
 	var errs []string
+	if err := ValidateExecutionIsolation(cfg); err != nil {
+		errs = append(errs, err.Error())
+	}
 
 	// Server validation - always required
 	if cfg.Server.Port <= 0 || cfg.Server.Port > 65535 {

@@ -23,6 +23,7 @@ docker run -d \
   --name kandev \
   --restart unless-stopped \
   -p 127.0.0.1:38429:38429 \
+  -e KANDEV_SERVER_HOST=0.0.0.0 \
   -v kandev-data:/data \
   ghcr.io/kdlbs/kandev:latest
 ```
@@ -112,6 +113,7 @@ sudo install -d -o 1000 -g 1000 /srv/kandev
 docker run -d \
   --name kandev \
   -p 127.0.0.1:38429:38429 \
+  -e KANDEV_SERVER_HOST=0.0.0.0 \
   -v /srv/kandev:/data \
   ghcr.io/kdlbs/kandev:X.Y.Z
 ```
@@ -153,6 +155,7 @@ Example:
 docker run -d \
   --name kandev \
   -p 127.0.0.1:38429:38429 \
+  -e KANDEV_SERVER_HOST=0.0.0.0 \
   -v kandev-data:/data \
   -e KANDEV_LOG_LEVEL=warn \
   ghcr.io/kdlbs/kandev:X.Y.Z

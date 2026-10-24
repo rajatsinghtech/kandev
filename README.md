@@ -1,3 +1,10 @@
+> Security-hardened fork maintained at [rajatsinghtech/kandev](https://github.com/rajatsinghtech/kandev).
+> See [fork restrictions](docs/public/security.md#fork-hardening-restrictions) before use:
+> launch settings require a human administrator login, unsafe active-content previews are disabled,
+> Organizations mode is unavailable pending credential isolation, and trusted desktop releases
+> require owner signing credentials. Build the fork source: the upstream npm packages
+> and container images do not contain these fixes. No signed fork release is published.
+
 # Kandev
 
 Manage and run tasks in parallel. Orchestrate agents. Review changes. Ship value.

@@ -535,7 +535,7 @@ func newSettingsHarness(
 	hub Broadcaster,
 ) (*gin.Engine, *controller.Controller, *registry.Registry) {
 	t.Helper()
-	return newSettingsHarnessAs(t, repo, hub, syntheticSettingsIdentity())
+	return newSettingsHarnessAs(t, repo, hub, authn.Identity{UserID: "admin", Role: authn.RoleAdmin, SessionID: "human-settings-session"})
 }
 
 // newSettingsHarnessAs is newSettingsHarness with the caller's identity, for

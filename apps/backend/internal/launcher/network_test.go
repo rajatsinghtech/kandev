@@ -14,7 +14,7 @@ import (
 )
 
 func TestLogStartupPrintsNetworkAddress(t *testing.T) {
-	t.Setenv("KANDEV_SERVER_HOST", "")
+	t.Setenv("KANDEV_SERVER_HOST", "0.0.0.0")
 	oldNetworkInterfaces := networkInterfacesFn
 	oldNetworkInterfaceAddrs := networkInterfaceAddrsFn
 	t.Cleanup(func() {

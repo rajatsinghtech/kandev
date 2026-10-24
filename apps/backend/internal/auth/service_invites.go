@@ -18,6 +18,15 @@ const (
 // CreateInvite mints an invite link token. Email is optional; when set, the
 // accept step must use the same address. Returns the raw token exactly once.
 func (s *Service) CreateInvite(ctx context.Context, createdBy, email, role string, ttlHours int) (*store.Invite, string, error) {
+	if s.cfg.Features.MultiTenancy {
+		id, err := s.tenantAdministrator(ctx)
+		if err != nil {
+			return nil, "", err
+		}
+		if createdBy != id.UserID {
+			return nil, "", ErrAdministrationDenied
+		}
+	}
 	role = usermodels.NormalizeRole(role)
 	ttl := defaultInviteTTL
 	if ttlHours > 0 {
@@ -112,11 +121,25 @@ func (s *Service) InspectInvite(ctx context.Context, token string) (*store.Invit
 
 // ListInvites returns all invites for the admin UI.
 func (s *Service) ListInvites(ctx context.Context) ([]*store.Invite, error) {
+	if s.cfg.Features.MultiTenancy {
+		id, err := s.tenantAdministrator(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return s.store.ListInvitesInOrg(ctx, id.OrgID)
+	}
 	return s.store.ListInvites(ctx)
 }
 
 // DeleteInvite revokes an invite link.
 func (s *Service) DeleteInvite(ctx context.Context, id string) error {
+	if s.cfg.Features.MultiTenancy {
+		actor, err := s.tenantAdministrator(ctx)
+		if err != nil {
+			return err
+		}
+		return s.store.DeleteInviteInOrg(ctx, id, actor.OrgID)
+	}
 	return s.store.DeleteInvite(ctx, id)
 }
 

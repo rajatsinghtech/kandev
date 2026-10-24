@@ -315,7 +315,7 @@ func TestResolvedBinds(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "single host", host: "127.0.0.1", want: []string{"127.0.0.1"}},
-		{name: "empty falls back to wildcard default", host: "", want: []string{"0.0.0.0"}},
+		{name: "empty falls back to loopback default", host: "", want: []string{"127.0.0.1"}},
 		{name: "comma separated list", host: "127.0.0.1,100.64.0.1", want: []string{"127.0.0.1", "100.64.0.1"}},
 		{name: "whitespace trimmed", host: " 127.0.0.1 , 100.64.0.1 ", want: []string{"127.0.0.1", "100.64.0.1"}},
 		{name: "duplicates dropped", host: "127.0.0.1,127.0.0.1,::1", want: []string{"127.0.0.1", "::1"}},

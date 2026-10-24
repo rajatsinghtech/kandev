@@ -56,7 +56,7 @@ const (
 
 var startupCatalog = []CatalogEntry{
 	{Key: "homeDir", EnvVars: []string{"KANDEV_HOME_DIR"}, Owner: "common/config", Default: "~/.kandev"},
-	{Key: "server.host", EnvVars: []string{"KANDEV_SERVER_HOST"}, Owner: "backend", Default: "0.0.0.0"},
+	{Key: "server.host", EnvVars: []string{"KANDEV_SERVER_HOST"}, Owner: "backend", Default: "127.0.0.1"},
 	{Key: "server.port", EnvVars: []string{"KANDEV_SERVER_PORT", "KANDEV_BACKEND_PORT", "KANDEV_PORT"}, Owner: "launcher/backend", Default: "38429"},
 	{Key: "server.readTimeout", EnvVars: []string{"KANDEV_SERVER_READTIMEOUT"}, Owner: "backend", Default: "30"},
 	{Key: "server.writeTimeout", EnvVars: []string{"KANDEV_SERVER_WRITETIMEOUT"}, Owner: "backend", Default: "30"},
